@@ -9,8 +9,8 @@ Specifically, to submit your project you will be required to complete the follow
 
 ---
 
-**PASTE PUBLIC VIDEO LINK HERE: https://drive.google.com/file/d/1jFjSkZukobZCnuZ67av4ZeaiqIOWMo_i/view?usp=sharing **
-Please download the video in case it does not load once the link is clicked.
+**PASTE PUBLIC VIDEO LINK HERE: https://drive.google.com/file/d/1jFjSkZukobZCnuZ67av4ZeaiqIOWMo_i/view?usp=sharing 
+Please download the video in case it does not load once the link is clicked.**
 
 ---
 
