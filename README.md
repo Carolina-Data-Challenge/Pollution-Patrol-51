@@ -10,7 +10,7 @@ Specifically, to submit your project you will be required to complete the follow
 ---
 
 **PASTE PUBLIC VIDEO LINK HERE: https://drive.google.com/file/d/1jFjSkZukobZCnuZ67av4ZeaiqIOWMo_i/view?usp=sharing 
-Please watch the video in full screen to support its HD definition.**
+Please watch the video in full screen to support its HD definition or else it will be blurry.**
 
 ---
 
