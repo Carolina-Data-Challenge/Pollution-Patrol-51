@@ -1,0 +1,152 @@
+---
+title: "DavidCDC2020.Rmd"
+author: "David Peery"
+date: "10/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+
+```
+Our goal is to see how well/if we can predict how much a city's population changes based on just it's air quality.  We hypothesize that cities with lower air population experience more growth, since people would likely prefer to live in a place with less air pollution. That would be our alternative hypothesis against the null hypothesis that there is no relationship between air pollution and population growth. To test this out, we pulled air pollution data for all U.S. cities from January 8, 2019 to January 10,2019 from openaq.org and pulled data on the changes in population from July 1, 2018 to July 1, 2019 from the census bureau.  We chose 2018-2019 for the population becuase it is the most recent data available, and we chose January 8-10 becuase it is close to the middle of that time interval.  We will be using an average of ozone (o3) and particulate matter of size 2.5 micrometers or less (pm2.5) levels across the 3 days because they have the most data available on openaq.org.
+https://openaq.org/#/countries/US?_k=4x3fo3
+https://www.census.gov/data/datasets/time-series/demo/popest/2010s-total-cities-and-towns.html
+```
+
+```
+Our results could be valuable to city planners trying to anticipate how much population will grow in the future and will provide valuable insight to anyone on how environmental factors influence people's choices of places to live.
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(Metrics)
+
+```
+
+
+```{r cars}
+setwd('/Users/josephpeery/Documents/CDC2020/')
+df <- read.csv("openaq-7.csv")
+head(df)
+```
+```{r}
+tidyup <- function(df) {
+  df_tidy <- df %>% 
+    group_by(city, parameter) %>% 
+    summarize(mean_value = mean(value)) %>% 
+    spread(key = "parameter", value = "mean_value")
+  df_tidy$city <- sapply(strsplit(df_tidy$city,"-"), `[`, 1) # Thanks StackOverflow! https://stackoverflow.com/questions/33683862/first-entry-from-string-split
+  df_tidyer <- df_tidy %>% 
+    mutate(city = str_to_title(city)) %>% 
+    filter(!is.na(o3)) %>% 
+    filter(!is.na(pm25)) %>% 
+    rename(pm2.5 = pm25)
+  return(df_tidyer)
+}
+```
+```
+The function above tidies up the data quite a bit, but also remove some data, which introduces some bias. Several cities in this dataset are listed by multiple cities, for example Birmingham-Hoover.  These cities are very close together, so we are keeping the first city and dropping the other two. Also, we lose several entries when we select only those cities that have o3 and pm2.5 data.  There was also missing data from the start as there were many cities that didn't have any records for o3 or pm2.5 and never made it into our csv file. 
+```
+```{r}
+df_tidyer <- tidyup(df)
+head(df_tidyer)
+```
+
+```{r}
+setwd('/Users/josephpeery/Documents/CDC2020/')
+pop <- read.csv('SUB-IP-EST2019-ANNCH.xlsx - SUB-IP-EST2019-ANNCH.csv', header = T, skip = 3)
+head(pop)
+```
+```{r}
+tidyup_pop <- function(df_pop) {
+  colnames(df_pop) <- c('Rank', 'city', "twenty18", "twenty19", "Number", "Percent")
+  pop_tidy <- df_pop %>% 
+  select(city,Percent,) %>% 
+  mutate(Percent = as.numeric(Percent)) %>% 
+  mutate(city = str_replace_all(city, "city", "")) %>% 
+  mutate(city = str_replace_all(city, "town", "")) %>% 
+  filter(!is.na(Percent))
+  pop_tidy$city <- sapply(strsplit(pop_tidy$city," ,"), `[`, 1) #reusing that very nice StackOverflow code 
+  return(pop_tidy)
+}
+```
+
+
+```{r}
+pop_tidy <- tidyup_pop(pop)
+head(pop_tidy)
+```
+```
+The percent column refers to the percent change in population from July 1, 2018 to July 1, 2019.
+```
+
+
+```{r}
+df_joined <- inner_join(df_tidyer, pop_tidy, key = city)
+head(df_joined)
+nrow(df_joined)
+```
+
+```
+Document: we lost some data when we did the inner join, specifically any cities where the keys didn't match up correctly between the two datasets.
+```
+
+```
+Author: Dheya
+We decided to incorporate machine learning by providing some rows of our data frame as training data. The remaining 30% of the rows are test data. The split of data is randomized every time the chunk of code runs. A linear regression model is created for the training data. The summary of the model is provided. This model is used for predictions on the test data. The mean squared error of the predicted values on the test set and the actual values of the test set is calculated and printed. The MSE varies each time the chunk of code runs because of the randomized split in training and test data, but the mean squared error is generally around 0.70.
+```
+
+```{r}
+new_dt = sort(sample(nrow(df_joined), nrow(df_joined)*.7))
+train<-df_joined[new_dt,]
+test<-df_joined[-new_dt,]
+print(train)
+print(test)
+
+new_model <- lm(Percent ~ pm2.5 + o3, train)
+summary(new_model)
+predicting_on_test_set <- predict(new_model, test)
+
+error_predictions <- mse(test$Percent, predicting_on_test_set)
+print(error_predictions)
+```
+
+```
+Now, we train a model using the whole dataset and use it it to make predictions about 2020-2021 population growth.
+```
+
+
+```{r}
+model <- lm(Percent ~ pm2.5 + o3, df_joined)
+summary(model)
+```
+```
+Our model performs pretty well! Both of our predictors, pm2.5 and o3 are significant at the threshold of 0.05, with respective p-values of .0138 and .0255.  With an adjusted R-squared of 0.03386, the variation in air quality can explain about 3.386% of the variation in percent population change.  So we probably can't predict population growth very well with only air pollution data, but we can reject the null hypothesis that there is no relationship between air pollution and population growth in favor of the alternative hypothesis that there is a relationship between air pollution levels and population growth.
+```
+
+```
+Now, we will use this model to make predictions about the population growth that U.S. cities will experience between 2020 and 2021. We will use the air quality data from the last 2 days to do that, namely October 2 and October 3, 2020.  We will print out which cities we predict will have the highest and lowest population growths from 2020 to 2021, and we will show our prediction for Durham, NC, where we are!
+```
+
+
+```{r}
+setwd('/Users/josephpeery/Documents/CDC2020/')
+
+df_2020 <- read.csv('openaq-2020.csv')
+head(df_2020)
+```
+
+```{r}
+df_2020_tidy <- tidyup(df_2020)
+predictions <- data.frame(df_2020_tidy$city, predict(model, df_2020_tidy))
+colnames(predictions) <- c('city', 'predicted_population_percent_change')
+head(arrange(predictions, predicted_population_percent_change))
+head(arrange(predictions, desc(predicted_population_percent_change)))
+filter(predictions, city == 'Durham')
+```
